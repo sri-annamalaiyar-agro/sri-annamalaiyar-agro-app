@@ -4029,6 +4029,85 @@ function loadPermanentVault() {
 
   // Ensure every Purchase Item is permanently mirrored to Sale Items & Medicine List if applicable
   const delSet = new Set(state.deletedIds);
+
+  // Seed 10 Raw Materials & 22 Feed Medicines with 2026-11-26 Opening Stock (from 25-11-2026 Closing Sheet)
+  (function seedNov26FeedMillOpening() {
+    const rmOpeningList = [
+      { id: 'pitem-rm-maize', name: 'MAIZE', qty: 50483 },
+      { id: 'pitem-rm-dorb', name: 'DORB', qty: 5021 },
+      { id: 'pitem-rm-soya', name: 'SOYA', qty: 56180 },
+      { id: 'pitem-rm-rap-seed', name: 'RAP SEED', qty: 4004 },
+      { id: 'pitem-rm-sf', name: 'SF', qty: 8822 },
+      { id: 'pitem-rm-rice', name: 'RICE', qty: 5710 },
+      { id: 'pitem-rm-ddgs', name: 'DDGS', qty: 1870 },
+      { id: 'pitem-rm-calcite', name: 'CALCITE', qty: 13517 },
+      { id: 'pitem-rm-stone', name: 'STONE', qty: 25570 },
+      { id: 'pitem-rm-salt', name: 'SALT', qty: 4455 }
+    ];
+    const fmOpeningList = [
+      { id: 'pitem-fm-dcp', name: 'DCP', qty: 3430 },
+      { id: 'pitem-fm-lysin', name: 'LYSIN', qty: 837 },
+      { id: 'pitem-fm-dlm', name: 'DLM', qty: 759.9 },
+      { id: 'pitem-fm-vit-pre', name: 'VIT-PRE', qty: 173.5 },
+      { id: 'pitem-fm-choline', name: 'CHOLINE', qty: 1041 },
+      { id: 'pitem-fm-liver-pow', name: 'LIVER POW', qty: 1602 },
+      { id: 'pitem-fm-trace-mine', name: 'TRACE MINE', qty: 1126.5 },
+      { id: 'pitem-fm-toxin', name: 'TOXIN', qty: 1111 },
+      { id: 'pitem-fm-engyme', name: 'ENGYME', qty: 276.25 },
+      { id: 'pitem-fm-acidifier', name: 'ACIDIFIER', qty: 911 },
+      { id: 'pitem-fm-tiamulin', name: 'TIAMULIN', qty: 328 },
+      { id: 'pitem-fm-ctc', name: 'CTC', qty: 170 },
+      { id: 'pitem-fm-gp', name: 'GP', qty: 375 },
+      { id: 'pitem-fm-electro', name: 'ELECTRO', qty: 205 },
+      { id: 'pitem-fm-sodium', name: 'SODIUM', qty: 85 },
+      { id: 'pitem-fm-pro-bio', name: 'PRO-BIO', qty: 244 },
+      { id: 'pitem-fm-nicomix', name: 'NICOMIX', qty: 449 },
+      { id: 'pitem-fm-phytase', name: 'PHYTASE', qty: 35.4 },
+      { id: 'pitem-fm-nutrikem', name: 'NUTRIKEM', qty: 458 },
+      { id: 'pitem-fm-vit-c', name: 'VIT-C', qty: 70 },
+      { id: 'pitem-fm-larva', name: 'LARVA', qty: 200 },
+      { id: 'pitem-fm-cal-d', name: 'CAL-D', qty: 37 }
+    ];
+
+    const ensureStockItemAndOpening = (itemObj, itemType) => {
+      const pid = itemObj.id;
+      const openPurchId = 'pur-open-20261126-' + itemObj.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      if (!delSet.has(pid)) {
+        const exists = (state.purchaseItems || []).some(
+          p => p.id === pid || ((p.name || '').trim().toLowerCase() === itemObj.name.toLowerCase() && p.type === itemType)
+        );
+        if (!exists) {
+          state.purchaseItems.push({
+            id: pid,
+            name: itemObj.name,
+            type: itemType,
+            unit: 'kg'
+          });
+        }
+      }
+      if (!delSet.has(openPurchId) && itemObj.qty > 0) {
+        const hasOpen = (state.purchases || []).some(p => p.id === openPurchId);
+        if (!hasOpen) {
+          state.purchases.push({
+            id: openPurchId,
+            date: '2026-11-26',
+            party: 'Opening Stock (25-11-2026 Closing)',
+            type: itemType,
+            itemName: itemObj.name,
+            qty: itemObj.qty,
+            unit: 'kg',
+            rate: 0,
+            total: 0,
+            notes: 'Opening Stock (25-11-2026 Closing)'
+          });
+        }
+      }
+    };
+
+    rmOpeningList.forEach(x => ensureStockItemAndOpening(x, 'raw-material'));
+    fmOpeningList.forEach(x => ensureStockItemAndOpening(x, 'feed-medicine'));
+  })();
+
   state.purchaseItems.forEach(item => {
     if (delSet.has(item.id)) return;
     if (!state.saleItems.some(s => s.name.toLowerCase() === item.name.toLowerCase() && s.type === item.type)) {
@@ -4365,7 +4444,8 @@ const NAV_ITEMS = [
       { id: 'rep-feed-godown', label: 'Feed Godown' },
       { id: 'rep-egg-godown', label: 'Egg Godown' },
       { id: 'rep-medicine', label: 'Medicine' },
-      { id: 'rep-vaccine', label: 'Vaccine' }
+      { id: 'rep-vaccine', label: 'Vaccine' },
+      { id: 'rep-ledger', label: 'Ledger Report' }
     ]
   },
   {
@@ -4950,11 +5030,7 @@ function renderTopbar() {
   const viewOnlyPill = (!isMainAdmin() && !hideAddBtn && !canAddHere)
     ? `<span style="padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:800;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;">👁️ View Only</span>`
     : '';
-  if (hideAddBtn || !canAddHere) {
-    right.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">${viewOnlyPill}${logoutBtnHtml}</div>`;
-  } else {
-    right.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><button class="btn-primary" onclick="openAddModal()">+ Add Entry</button>${logoutBtnHtml}</div>`;
-  }
+  right.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">${viewOnlyPill}${logoutBtnHtml}</div>`;
 }
 
 function getNeccRateInfo() {
@@ -6569,41 +6645,55 @@ function updateVoucherPartyOutstandingHint(partyVal) {
   }
 }
 
-function openAccountVoucherModal() {
+function setVoucherEntryDate(val) {
+  appState.voucherEntryDate = val || todayStr();
+  const bannerInp = document.getElementById('voucherBannerEntryDate');
+  if (bannerInp && bannerInp.value !== appState.voucherEntryDate) {
+    bannerInp.value = appState.voucherEntryDate;
+  }
+  const modalInp = document.getElementById('voucherModalDateInput');
+  if (modalInp && modalInp.value !== appState.voucherEntryDate) {
+    modalInp.value = appState.voucherEntryDate;
+  }
+}
+
+function openAccountVoucherModal(presetType = 'Payment', presetMode = 'Cash') {
   const allParties = getAllAccountHeadsAndParties();
   const nextVchNo = 'VCH-' + String((appState.accountVouchers || []).length + 1).padStart(3, '0');
+  const activeEntryDate = appState.voucherEntryDate || todayStr();
+  appState.voucherEntryDate = activeEntryDate;
 
   openModal(`
     <div class="modal-head"><h3>🧾 Create Account Voucher</h3><button class="close-btn" onclick="closeModal()">✕</button></div>
-    <form onsubmit="submitAccountVoucherForm(event)">
+    <form id="createAccountVoucherForm" onsubmit="submitAccountVoucherForm(event)">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="form-group"><label>Date *</label><input class="form-control" type="date" name="date" value="${todayStr()}" required /></div>
-        <div class="form-group"><label>Voucher No.</label><input class="form-control" name="voucherNo" value="${nextVchNo}" placeholder="e.g., VCH-001" /></div>
+        <div class="form-group"><label>Date *</label><input id="voucherModalDateInput" class="form-control" type="date" name="date" value="${activeEntryDate}" onchange="setVoucherEntryDate(this.value)" required /></div>
+        <div class="form-group"><label>Voucher No.</label><input id="voucherModalNoInput" class="form-control" name="voucherNo" value="${nextVchNo}" placeholder="e.g., VCH-001" /></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="form-group">
           <label>Voucher Type *</label>
-          <select class="form-control" name="voucherType" required>
-            <option value="Payment">💸 Payment (Paid to Supplier / Expense)</option>
-            <option value="Receipt">💰 Receipt (Received from Customer)</option>
-            <option value="Expense">🧾 Farm / Office Expense</option>
-            <option value="Contra">🏦 Contra (Cash ↔ Bank Transfer)</option>
-            <option value="Journal">📘 Journal Adjustment</option>
+          <select id="voucherModalTypeSelect" class="form-control" name="voucherType" required>
+            <option value="Payment" ${presetType === 'Payment' ? 'selected' : ''}>💸 Payment (Paid to Supplier / Expense)</option>
+            <option value="Receipt" ${presetType === 'Receipt' ? 'selected' : ''}>💰 Receipt (Received from Customer)</option>
+            <option value="Expense" ${presetType === 'Expense' ? 'selected' : ''}>🧾 Farm / Office Expense</option>
+            <option value="Contra" ${presetType === 'Contra' ? 'selected' : ''}>🏦 Contra (Cash ↔ Bank Transfer)</option>
+            <option value="Journal" ${presetType === 'Journal' ? 'selected' : ''}>📘 Journal Adjustment</option>
           </select>
         </div>
         <div class="form-group">
           <label>Payment Mode *</label>
           <select class="form-control" name="payMode">
-            <option value="Cash">💵 Cash</option>
-            <option value="Bank / NEFT / RTGS">🏦 Bank / NEFT / RTGS</option>
-            <option value="UPI / GPay">📱 UPI / GPay</option>
-            <option value="Cheque">🧾 Cheque</option>
+            <option value="Cash" ${presetMode === 'Cash' ? 'selected' : ''}>💵 Cash</option>
+            <option value="Bank / NEFT / RTGS" ${presetMode === 'Bank / NEFT / RTGS' ? 'selected' : ''}>🏦 Bank / NEFT / RTGS</option>
+            <option value="UPI / GPay" ${presetMode === 'UPI / GPay' ? 'selected' : ''}>📱 UPI / GPay</option>
+            <option value="Cheque" ${presetMode === 'Cheque' ? 'selected' : ''}>🧾 Cheque</option>
           </select>
         </div>
       </div>
       <div class="form-group">
         <label>Party / Account Head *</label>
-        <input class="form-control" name="party" list="accPartyDatalist" required placeholder="Select Supplier, Customer, or Expense Head" oninput="updateVoucherPartyOutstandingHint(this.value)" onchange="updateVoucherPartyOutstandingHint(this.value)" />
+        <input id="voucherModalPartyInput" class="form-control" name="party" list="accPartyDatalist" required placeholder="Select Supplier, Customer, or Expense Head" oninput="updateVoucherPartyOutstandingHint(this.value)" onchange="updateVoucherPartyOutstandingHint(this.value)" />
         <datalist id="accPartyDatalist">${allParties.map(p => `<option value="${p.replace(/"/g, '&quot;')}">`).join('')}</datalist>
         <div id="voucherPartyBalHint" style="font-size:11.5px;margin-top:4px;"></div>
       </div>
@@ -6612,9 +6702,16 @@ function openAccountVoucherModal() {
         <div class="form-group"><label>Bill / Cheque / UTR Ref</label><input class="form-control" name="refNo" placeholder="Optional Bill No / UTR" /></div>
       </div>
       <div class="form-group"><label>Narration / Remarks</label><input class="form-control" name="notes" placeholder="Payment / Receipt / Expense details" /></div>
-      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button><button type="submit" class="btn-primary">Save &amp; View Voucher</button></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeModal()">Close</button><button type="submit" class="btn-primary">Save &amp; Next Voucher</button></div>
     </form>
   `);
+  setTimeout(() => {
+    const vchNoInp = document.getElementById('voucherModalNoInput');
+    if (vchNoInp) {
+      vchNoInp.focus();
+      vchNoInp.select();
+    }
+  }, 40);
 }
 
 function submitAccountVoucherForm(e) {
@@ -6622,15 +6719,19 @@ function submitAccountVoucherForm(e) {
   const fd = new FormData(e.target);
   const amount = parseFloat(fd.get('amount')) || 0;
   if (amount <= 0) return;
+  const chosenDate = fd.get('date') || appState.voucherEntryDate || todayStr();
+  appState.voucherEntryDate = chosenDate;
+  const chosenType = fd.get('voucherType') || 'Payment';
+  const chosenMode = fd.get('payMode') || 'Cash';
   const vchNo = (fd.get('voucherNo') || '').trim() || ('VCH-' + String((appState.accountVouchers || []).length + 1).padStart(3, '0'));
   const newId = 'vch-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
   appState.accountVouchers = appState.accountVouchers || [];
   appState.accountVouchers.push({
     id: newId,
-    date: fd.get('date') || todayStr(),
+    date: chosenDate,
     voucherNo: vchNo,
-    voucherType: fd.get('voucherType') || 'Payment',
-    payMode: fd.get('payMode') || 'Cash',
+    voucherType: chosenType,
+    payMode: chosenMode,
     party: (fd.get('party') || '').trim(),
     refNo: (fd.get('refNo') || '').trim(),
     amount: +amount.toFixed(2),
@@ -6639,7 +6740,10 @@ function submitAccountVoucherForm(e) {
   });
   savePermanentVault(true);
   render();
-  viewAccountVoucherSlip(newId);
+  if (typeof showToast === 'function') {
+    showToast(`✅ ${vchNo} (${chosenDate}) Saved — Ready for next bill!`);
+  }
+  openAccountVoucherModal(chosenType, chosenMode);
 }
 
 function printAccountVoucherSlip() {
@@ -6922,7 +7026,6 @@ function renderAccountsSection(sub = 'acc-voucher') {
           <div class="exec-hero-sub">Auto-consolidated Debit &amp; Credit ledger across Purchases, Sales, Trip Bills, Trip Expenses &amp; Vouchers</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <button type="button" class="pr-btn-wa" onclick="shareAnyReportWhatsAppImage('Accounts Ledger (' + (selParty === 'ALL' ? selGroup : selParty) + ')', 'SRI ANNAMALAIYAR AGRO • ' + todayStr())">📲 Share WhatsApp</button>
           ${canUserAddInSection('accounts') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ New Voucher (E)</button>` : ''}
         </div>
       </div>
@@ -7064,6 +7167,8 @@ function renderAccountsSection(sub = 'acc-voucher') {
   const totExp = vouchers.filter(v => v.voucherType === 'Expense').reduce((s, v) => s + (parseFloat(v.amount) || 0), 0);
   const totOther = vouchers.filter(v => v.voucherType === 'Contra' || v.voucherType === 'Journal').reduce((s, v) => s + (parseFloat(v.amount) || 0), 0);
 
+  const bannerVchDate = appState.voucherEntryDate || todayStr();
+
   return `
     <div class="exec-hero exec-hero-purple">
       <div>
@@ -7071,8 +7176,17 @@ function renderAccountsSection(sub = 'acc-voucher') {
         <div class="exec-hero-title">🧾 Accounts Voucher Register</div>
         <div class="exec-hero-sub">Record Supplier Payments, Customer Receipts, Farm/Office Expenses &amp; Bank Contra</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${canUserAddInSection('accounts') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ Add Voucher (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        ${canUserAddInSection('accounts') ? `
+          <label for="voucherBannerEntryDate" style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.34);padding:5px 10px;border-radius:9px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;">
+            <span>📅 Entry Date:</span>
+            <input type="date" id="voucherBannerEntryDate" value="${bannerVchDate}"
+              onclick="try{this.showPicker()}catch(e){}"
+              onchange="setVoucherEntryDate(this.value)"
+              style="padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.45);background:#ffffff;color:#0f172a;font-size:12.5px;font-weight:800;cursor:pointer;" />
+          </label>
+          <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ Add Voucher (E)</button>
+        ` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
       </div>
     </div>
 
@@ -13556,6 +13670,186 @@ function renderReports(sub = 'rep-purchase') {
       </div>
     `;
   }
+
+  // LEDGER REPORT (with WhatsApp Share)
+  if (activeRep === 'rep-ledger') {
+    const scopeKey = 'rep_ledger_scope';
+    const allLedger = buildUnifiedAccountLedger().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const filteredLedger = filterRowsByDate(allLedger, scopeKey);
+    const selGroup = appState.repLedgerGroupFilter || 'ALL';
+    const selParty = appState.repLedgerPartyFilter || 'ALL';
+
+    const groupFiltered = selGroup === 'ALL' ? filteredLedger : filteredLedger.filter(x => x.group === selGroup);
+    const partyNames = Array.from(new Set(groupFiltered.map(x => x.party))).sort();
+    const visibleRows = selParty === 'ALL' ? groupFiltered : groupFiltered.filter(x => x.party === selParty);
+
+    const partySummaryMap = {};
+    groupFiltered.forEach(r => {
+      if (!partySummaryMap[r.party]) {
+        partySummaryMap[r.party] = { party: r.party, group: r.group, debit: 0, credit: 0, count: 0 };
+      }
+      partySummaryMap[r.party].debit += r.debit;
+      partySummaryMap[r.party].credit += r.credit;
+      partySummaryMap[r.party].count += 1;
+    });
+    const partySummaries = Object.values(partySummaryMap).sort((a, b) => a.party.localeCompare(b.party));
+
+    const totDebit = visibleRows.reduce((s, r) => s + r.debit, 0);
+    const totCredit = visibleRows.reduce((s, r) => s + r.credit, 0);
+    const netBal = +(totDebit - totCredit).toFixed(2);
+
+    const chrono = visibleRows.slice().reverse();
+    let run = 0;
+    const withBal = chrono.map(r => {
+      run = +(run + r.debit - r.credit).toFixed(2);
+      return { ...r, runningBal: run };
+    }).reverse();
+
+    const fState = getDateFilterState(scopeKey);
+    const activeDateLabel = (fState.start || fState.end) ? (fState.start || fState.end) : 'All Dates';
+    const reportSubTitle = `SRI ANNAMALAIYAR AGRO • ${selParty === 'ALL' ? selGroup : selParty} • ${activeDateLabel}`;
+
+    return `
+      <div class="exec-hero exec-hero-purple">
+        <div>
+          <div class="exec-hero-eyebrow">SRI ANNAMALAIYAR AGRO • ACCOUNTS &amp; PARTY STATEMENT REPORT</div>
+          <div class="exec-hero-title">📘 Ledger Report — Party Statement &amp; Balances</div>
+          <div class="exec-hero-sub">Consolidated Debit &amp; Credit statement across Purchases, Sales, Trips &amp; Vouchers</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${canUserShareReports() ? `<button type="button" class="pr-btn-wa" onclick="shareLedgerReportWhatsApp()">📲 Share WhatsApp Image</button>` : ''}
+          <button type="button" class="pr-btn-outline" style="background:rgba(255,255,255,0.14);color:#ffffff;border-color:rgba(255,255,255,0.32);" onclick="window.print()">🖨 Print Report</button>
+        </div>
+      </div>
+
+      ${renderSingleDateFilterBar(scopeKey)}
+
+      <div class="card" style="padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="pr-cat-btn ${selGroup === 'ALL' ? 'active' : ''}" onclick="appState.repLedgerGroupFilter='ALL'; appState.repLedgerPartyFilter='ALL'; render();">All Accounts</button>
+          <button type="button" class="pr-cat-btn ${selGroup === 'Customer' ? 'active' : ''}" onclick="appState.repLedgerGroupFilter='Customer'; appState.repLedgerPartyFilter='ALL'; render();">🤝 Customers</button>
+          <button type="button" class="pr-cat-btn ${selGroup === 'Supplier' ? 'active' : ''}" onclick="appState.repLedgerGroupFilter='Supplier'; appState.repLedgerPartyFilter='ALL'; render();">🏭 Suppliers</button>
+          <button type="button" class="pr-cat-btn ${selGroup === 'Expense' ? 'active' : ''}" onclick="appState.repLedgerGroupFilter='Expense'; appState.repLedgerPartyFilter='ALL'; render();">💸 Expenses</button>
+          <select class="form-control" style="max-width:250px;padding:6px 10px;" onchange="appState.repLedgerPartyFilter = this.value; render();">
+            <option value="ALL" ${selParty === 'ALL' ? 'selected' : ''}>All Parties in Group (${partyNames.length})</option>
+            ${partyNames.map(pn => `<option value="${pn.replace(/"/g, '&quot;')}" ${selParty === pn ? 'selected' : ''}>${pn}</option>`).join('')}
+          </select>
+        </div>
+        <div style="font-size:12.5px;font-weight:800;">
+          Net Balance: <span style="color:${netBal >= 0 ? '#0d8a4e' : '#b91c1c'};">₹${Math.abs(netBal).toLocaleString('en-IN', {minimumFractionDigits:2})} ${netBal >= 0 ? '(Dr / Receivable)' : '(Cr / Payable)'}</span>
+        </div>
+      </div>
+
+      <div class="exec-kpi-strip">
+        <div class="exec-kpi-box" style="--ek-color:#0972d3;">
+          <div class="exec-kpi-lbl">Total Debit (Dr)</div>
+          <div class="exec-kpi-val" style="color:#0972d3;">₹${totDebit.toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+          <div class="exec-kpi-sub">Sales + Payments Out + Expenses</div>
+        </div>
+        <div class="exec-kpi-box" style="--ek-color:#d97706;">
+          <div class="exec-kpi-lbl">Total Credit (Cr)</div>
+          <div class="exec-kpi-val" style="color:#b45309;">₹${totCredit.toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+          <div class="exec-kpi-sub">Purchases + Receipts In</div>
+        </div>
+        <div class="exec-kpi-box" style="--ek-color:${netBal >= 0 ? '#0d8a4e' : '#dc2626'};">
+          <div class="exec-kpi-lbl">Closing Balance</div>
+          <div class="exec-kpi-val" style="color:${netBal >= 0 ? '#0d8a4e' : '#b91c1c'};">₹${Math.abs(netBal).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+          <div class="exec-kpi-sub">${netBal >= 0 ? 'Net Receivable / Expense (Dr)' : 'Net Payable (Cr)'}</div>
+        </div>
+      </div>
+
+      ${selParty === 'ALL' && partySummaries.length > 0 ? `
+      <div class="card" style="padding:0;overflow:hidden;border-radius:14px;margin-bottom:16px;">
+        <div class="card-header" style="padding:13px 18px;margin-bottom:0;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+          <div class="card-title">📊 Party-Wise &amp; Account Summary (${partySummaries.length}) <span style="font-size:11.5px;font-weight:600;color:#64748b;">(Click any party to filter statement)</span></div>
+        </div>
+        <div class="table-wrap">
+          <table class="pr-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Party / Account Name</th>
+                <th>Group</th>
+                <th style="text-align:right;color:#0972d3;">Total Debit (₹)</th>
+                <th style="text-align:right;color:#b45309;">Total Credit (₹)</th>
+                <th style="text-align:right;">Closing Balance (₹)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${partySummaries.map((ps, i) => {
+                const b = +(ps.debit - ps.credit).toFixed(2);
+                const statusBadge = b > 0
+                  ? `<span class="pill pill-feed">Receivable (Dr)</span>`
+                  : (b < 0 ? `<span class="pill pill-raw-material">Payable (Cr)</span>` : `<span class="pill pill-medicine">Settled</span>`);
+                return `
+                  <tr style="cursor:pointer;" onclick="appState.repLedgerPartyFilter='${ps.party.replace(/'/g, "\'")}'; render();">
+                    <td><span class="pr-bill-no">${i + 1}</span></td>
+                    <td><b style="color:#0972d3;text-decoration:underline;">${ps.party}</b></td>
+                    <td>${ps.group}</td>
+                    <td style="text-align:right;font-weight:700;color:#0972d3;">₹${ps.debit.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                    <td style="text-align:right;font-weight:700;color:#b45309;">₹${ps.credit.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                    <td style="text-align:right;font-weight:900;color:${b >= 0 ? '#0d8a4e' : '#b91c1c'};">₹${Math.abs(b).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                    <td>${statusBadge}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="padding:0;overflow:hidden;border-radius:14px;">
+        <div class="card-header" style="padding:14px 18px;margin-bottom:0;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+          <div class="card-title">Detailed Ledger Entries (${withBal.length})</div>
+          <span class="badge-lock">● Ledger Report</span>
+        </div>
+        <div class="table-wrap">
+          <table class="pr-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Party / Account</th>
+                <th>Source</th>
+                <th>Ref / Voucher</th>
+                <th>Particulars</th>
+                <th style="text-align:right;color:#0972d3;">Debit (₹)</th>
+                <th style="text-align:right;color:#b45309;">Credit (₹)</th>
+                <th style="text-align:right;">Balance (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${withBal.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:26px;">No ledger transactions found for the selected filter.</td></tr>` :
+                withBal.map((r, i) => `
+                  <tr>
+                    <td><span class="pr-bill-no">${i + 1}</span></td>
+                    <td>${r.date || '-'}</td>
+                    <td><b style="color:#0f172a;">${r.party}</b></td>
+                    <td><span class="pill pill-medicine">${r.source}</span></td>
+                    <td><span class="pr-bill-no">${r.ref}</span></td>
+                    <td>${r.particulars}</td>
+                    <td style="text-align:right;font-weight:800;color:#0972d3;">${r.debit > 0 ? '₹' + r.debit.toLocaleString('en-IN', {minimumFractionDigits:2}) : '-'}</td>
+                    <td style="text-align:right;font-weight:800;color:#b45309;">${r.credit > 0 ? '₹' + r.credit.toLocaleString('en-IN', {minimumFractionDigits:2}) : '-'}</td>
+                    <td style="text-align:right;font-weight:800;color:${r.runningBal >= 0 ? '#0d8a4e' : '#b91c1c'};">₹${Math.abs(r.runningBal).toLocaleString('en-IN', {minimumFractionDigits:2})} ${r.runningBal >= 0 ? 'Dr' : 'Cr'}</td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+            ${withBal.length > 0 ? `
+            <tfoot>
+              <tr>
+                <td colspan="6">TOTAL</td>
+                <td style="text-align:right;color:#0972d3;">₹${totDebit.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                <td style="text-align:right;color:#b45309;">₹${totCredit.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                <td style="text-align:right;color:${netBal >= 0 ? '#0d8a4e' : '#b91c1c'};">₹${Math.abs(netBal).toLocaleString('en-IN', {minimumFractionDigits:2})} ${netBal >= 0 ? 'Dr' : 'Cr'}</td>
+              </tr>
+            </tfoot>` : ''}
+          </table>
+        </div>
+      </div>
+    `;
+  }
   return '';
 }
 
@@ -15973,6 +16267,20 @@ function importBackup(e) {
 // =========================================================================
 // UNIVERSAL WHATSAPP FULL-REPORT IMAGE GENERATOR (ALL REPORTS, BILLS & GODOWNS)
 // =========================================================================
+window.shareLedgerReportWhatsApp = function() {
+  const selGroup = appState.repLedgerGroupFilter || 'ALL';
+  const selParty = appState.repLedgerPartyFilter || 'ALL';
+  const fState = getDateFilterState('rep_ledger_scope');
+  const activeDateLabel = (fState.start || fState.end)
+    ? `${fState.start || 'Beginning'} → ${fState.end || 'Latest'}`
+    : 'All Dates';
+  const label = selParty === 'ALL' ? (selGroup === 'ALL' ? 'All Accounts' : selGroup) : selParty;
+  window.shareAnyReportWhatsAppImage(
+    'LEDGER REPORT — ' + label,
+    'SRI ANNAMALAIYAR AGRO • ' + activeDateLabel + ' • Generated: ' + todayStr()
+  );
+};
+
 window.shareAnyReportWhatsAppImage = function(customTitle, customSubtitle) {
   if (typeof canUserShareReports === 'function' && !canUserShareReports()) {
     showToast('🔒 Report WhatsApp Share is restricted for this Staff ID');
