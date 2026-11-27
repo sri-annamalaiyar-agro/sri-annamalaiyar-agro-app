@@ -4153,8 +4153,11 @@ const ENTRY_SECTION_DEFS = [
   { key: 'batch', label: '🐔 Batch Entry', short: 'Batch' },
   { key: 'purchase', label: '🛒 Purchase', short: 'Purchase' },
   { key: 'sales', label: '💰 Sales', short: 'Sales' },
+  { key: 'trip', label: '🚛 Trip Entry', short: 'Trip' },
+  { key: 'accounts', label: '🧾 Accounts', short: 'Accounts' },
   { key: 'medvac', label: '💊 Medicine & Vaccine', short: 'Med/Vac' },
-  { key: 'feedmill', label: '🏭 Feed Mill', short: 'Feed Mill' }
+  { key: 'feedmill', label: '🏭 Feed Mill', short: 'Feed Mill' },
+  { key: 'reports', label: '📊 Reports & WhatsApp Share', short: 'Reports' }
 ];
 
 function isMainAdmin() {
@@ -4167,7 +4170,12 @@ function canUserAddInSection(secKey) {
   const u = getCurrentUserAccount();
   if (!u || u.active === false) return false;
   const list = Array.isArray(u.allowedSections) ? u.allowedSections : [];
+  if (secKey === 'reports' && u.reportsConfigured !== true) return true;
   return list.includes(secKey);
+}
+
+function canUserShareReports() {
+  return canUserAddInSection('reports');
 }
 
 function getSectionKeyForActiveRoute(sec, sub) {
@@ -4177,10 +4185,11 @@ function getSectionKeyForActiveRoute(sec, sub) {
   }
   if (sec === 'purchase') return 'purchase';
   if (sec === 'sales') return 'sales';
+  if (sec === 'trip') return 'trip';
+  if (sec === 'accounts') return 'accounts';
   if (sec === 'medicine-vaccine') return 'medvac';
   if (sec === 'feed-mill') return 'feedmill';
-  if (sec === 'trip') return 'purchase';
-  if (sec === 'accounts') return 'purchase';
+  if (sec === 'reports') return 'view-only';
   if (sec === 'management') return 'admin-only';
   return 'view-only';
 }
@@ -6209,7 +6218,7 @@ function renderTripSection(sub = 'trip-purchase') {
           <div class="exec-hero-sub">Track Diesel, Driver Bata, Toll, Loading/Unloading &amp; Trip Route Expenses</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripExpenseModal()">+ Add Trip Expense</button>
+          ${canUserAddInSection('trip') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripExpenseModal()">+ Add Trip Expense (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
         </div>
       </div>
 
@@ -6295,7 +6304,7 @@ function renderTripSection(sub = 'trip-purchase') {
           <div class="exec-hero-sub">Separate Trip Sales log — tracks Trip Customers, Sales Items, Routes, Freight, Cash &amp; Bank</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripSalesModal()">+ Add Trip Sale</button>
+          ${canUserAddInSection('trip') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripSalesModal()">+ Add Trip Sale (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
         </div>
       </div>
 
@@ -6382,7 +6391,7 @@ function renderTripSection(sub = 'trip-purchase') {
           <div class="exec-hero-sub">Manage farm transport routes, distances, freight rates &amp; location-wise customers</div>
         </div>
         <div>
-          <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripLocationModal()">+ Add Trip Location</button>
+          ${canUserAddInSection('trip') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripLocationModal()">+ Add Trip Location (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden;border-radius:14px;">
@@ -6438,7 +6447,7 @@ function renderTripSection(sub = 'trip-purchase') {
         <div class="exec-hero-sub">Track supplier trips, vehicle loads, route locations &amp; freight charges</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripPurchaseModal()">+ Add Trip Purchase</button>
+        ${canUserAddInSection('trip') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openTripPurchaseModal()">+ Add Trip Purchase (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
       </div>
     </div>
 
@@ -6914,7 +6923,7 @@ function renderAccountsSection(sub = 'acc-voucher') {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button type="button" class="pr-btn-wa" onclick="shareAnyReportWhatsAppImage('Accounts Ledger (' + (selParty === 'ALL' ? selGroup : selParty) + ')', 'SRI ANNAMALAIYAR AGRO • ' + todayStr())">📲 Share WhatsApp</button>
-          <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ New Voucher</button>
+          ${canUserAddInSection('accounts') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ New Voucher (E)</button>` : ''}
         </div>
       </div>
 
@@ -7063,7 +7072,7 @@ function renderAccountsSection(sub = 'acc-voucher') {
         <div class="exec-hero-sub">Record Supplier Payments, Customer Receipts, Farm/Office Expenses &amp; Bank Contra</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ Add Voucher</button>
+        ${canUserAddInSection('accounts') ? `<button type="button" class="btn-primary" style="background:#fde047;color:#0f172a;font-weight:900;" onclick="openAccountVoucherModal()">+ Add Voucher (E)</button>` : `<span style="padding:7px 12px;border-radius:8px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.16);color:#fde047;">👁️ View Only</span>`}
       </div>
     </div>
 
@@ -14149,8 +14158,9 @@ function renderUserAccountsAdminPage() {
   `;
 }
 
-function buildSectionCheckboxesHtml(selectedSecs = ['batch']) {
+function buildSectionCheckboxesHtml(selectedSecs = ['batch', 'reports'], reportsConfigured = false) {
   const set = new Set(Array.isArray(selectedSecs) ? selectedSecs : []);
+  if (!reportsConfigured) set.add('reports');
   return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px;">
       ${ENTRY_SECTION_DEFS.map(d => `
@@ -14161,7 +14171,7 @@ function buildSectionCheckboxesHtml(selectedSecs = ['batch']) {
       `).join('')}
     </div>
     <div style="font-size:11px;color:#64748b;margin-top:5px;">
-      ℹ️ Checked sections allow <b>Entry</b>. Unchecked sections will be <b>👁️ View Only</b> for this staff.
+      ℹ️ Checked sections allow <b>Entry</b> (and <b>📲 WhatsApp Share</b> for Reports). Unchecked sections are <b>👁️ View Only</b>.
     </div>
   `;
 }
@@ -14204,7 +14214,7 @@ function openEditUserAccountModal(userId) {
       ${u.role !== 'admin' ? `
         <div class="form-group">
           <label>Entry-Allowed Sections (Unchecked = View Only) *</label>
-          ${buildSectionCheckboxesHtml(u.allowedSections || [])}
+          ${buildSectionCheckboxesHtml(u.allowedSections || [], u.reportsConfigured === true)}
         </div>
         <div class="form-group">
           <label>Account Status</label>
@@ -14245,6 +14255,7 @@ function saveUserAccountForm(e, userId) {
       u.password = password;
       if (u.role !== 'admin') {
         u.allowedSections = allowedSections;
+        u.reportsConfigured = true;
         u.active = active;
       }
     }
@@ -14256,6 +14267,7 @@ function saveUserAccountForm(e, userId) {
       password,
       role: 'staff',
       allowedSections,
+      reportsConfigured: true,
       active
     });
   }
@@ -15962,6 +15974,10 @@ function importBackup(e) {
 // UNIVERSAL WHATSAPP FULL-REPORT IMAGE GENERATOR (ALL REPORTS, BILLS & GODOWNS)
 // =========================================================================
 window.shareAnyReportWhatsAppImage = function(customTitle, customSubtitle) {
+  if (typeof canUserShareReports === 'function' && !canUserShareReports()) {
+    showToast('🔒 Report WhatsApp Share is restricted for this Staff ID');
+    return;
+  }
   const area = document.getElementById('contentArea');
   if (!area) return;
 
